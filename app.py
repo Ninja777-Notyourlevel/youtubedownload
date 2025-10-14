@@ -14,7 +14,10 @@ def get_link():
         return jsonify({"error": "URL is required"}), 400
 
     try:
-        ydl_opts = {'quiet': True}
+        ydl_opts = {
+    'quiet': True,
+    'cookiefile': 'youtube.com_cookies.txt'
+}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             title = info.get('title', 'Unknown Title')
