@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return """
+        return render_template("index.html")
     <form method="POST" action="/compile" id="frm">
         <textarea name="links" style="width:400px;height:200px;" placeholder="Paste YouTube links, one per line"></textarea><br><br>
         <button type="submit">Compile Audio</button>
