@@ -1,42 +1,64 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, request, send_file
 import yt_dlp
-import time
+import os
+import uuid
+import subprocess
 
 app = Flask(__name__)
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def home():
+    return """
+    <form method="POST" action="/compile" id="frm">
+        <textarea name="links" style="width:400px;height:200px;" placeholder="Paste YouTube links, one per line"></textarea><br><br>
+        <button type="submit">Compile Audio</button>
+    </form>
+    """
 
-@app.route('/get_link', methods=['POST'])
-def get_link():
-    url = request.form.get('url')
-    if not url:
-        return jsonify({'error': 'No URL provided'}), 400
+@app.route('/compile', methods=['POST'])
+def compile_audio():
+    raw = request.form.get("links", "")
+    links = [x.strip() for x in raw.split("\n") if x.strip()]
+
+    if not links:
+        return "No links provided!"
+
+    session_id = str(uuid.uuid4())
+    folder = f"tmp/{session_id}"
+    os.makedirs(folder, exist_ok=True)
+
+    audio_files = []
 
     ydl_opts = {
-        'quiet': True,
-        'skip_download': True,
+        'format': 'bestaudio/best',
+        'outtmpl': f'{folder}/%(title)s.%(ext)s',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '128',
+        }],
     }
 
-    retries = 3
-    for attempt in range(1, retries + 1):
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-            return jsonify({'title': info.get('title'), 'id': info.get('id')})
-        except yt_dlp.utils.DownloadError as e:
-            error_msg = str(e)
-            if 'HTTP Error 429' in error_msg:
-                if attempt < retries:
-                    time.sleep(5)  # wait 5 seconds before retrying
-                    continue
-                else:
-                    return jsonify({'error': 'Too Many Requests (429). Please try again later.'}), 429
-            else:
-                return jsonify({'error': error_msg}), 500
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        for link in links:
+            info = ydl.extract_info(link, download=True)
+            title = info.get('title')
+            audio_files.append(f"{folder}/{title}.mp3")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    # Create concat file list for ffmpeg (no gap)
+    list_file = f"{folder}/files.txt"
+    with open(list_file, "w", encoding="utf-8") as f:
+        for file in audio_files:
+            f.write(f"file '{os.path.abspath(file)}'\n")
+
+    output = f"{folder}/compiled.mp3"
+    subprocess.run(
+        ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file, "-c", "copy", output],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    return send_file(output, as_attachment=True, download_name="compilation.mp3")
+    
+if __name__ == "__main__":
+    app.run()
