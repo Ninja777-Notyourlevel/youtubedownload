@@ -1,39 +1,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>YouTube Downloader (Link Only)</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 50px auto; text-align: center; }
-    input { width: 80%; padding: 10px; margin: 10px 0; }
-    button { padding: 10px 20px; }
-    #result { margin-top: 20px; }
-  </style>
+    <title>YouTube Audio Compiler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+        }
+        textarea {
+            width: 400px;
+            height: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <h1>🎥 YouTube Downloader</h1>
-  <form id="downloadForm">
-    <input type="text" name="url" placeholder="Enter YouTube link" required>
-    <br>
-    <button type="submit">Get Download Link</button>
-  </form>
-
-  <div id="result"></div>
-
-  <script>
-    document.getElementById("downloadForm").onsubmit = async function(e) {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const response = await fetch("/get_link", { method: "POST", body: formData });
-      const data = await response.json();
-
-      const result = document.getElementById("result");
-      if (data.download_url) {
-        result.innerHTML = `<h3>${data.title}</h3>
-          <a href="${data.download_url}" target="_blank">Click to Download</a>`;
-      } else {
-        result.textContent = "❌ Error: " + (data.error || "Unknown issue");
-      }
-    };
-  </script>
+    <h2>Compile YouTube Audio (MP3)</h2>
+    <form method="POST" action="/compile">
+        <textarea name="links" placeholder="Paste YouTube links, one per line"></textarea><br>
+        <button type="submit">Compile</button>
+    </form>
 </body>
 </html>
